@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}曲を探す | 音楽すれ違いアプリ{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h2 class="mb-0">曲を探す</h2>
+  <a href="/songs" class="btn btn-outline-light btn-sm">← マイ曲に戻る</a>
+</div>
+
+<form method="get" action="/songs/search" class="d-flex gap-2 mb-4">
+  <input type="text" name="q" value="{{ q }}" class="form-control"
+         placeholder="曲名・アーティスト名で検索...">
+  <button class="btn btn-primary" type="submit">検索</button>
+</form>
+
+{% if error %}
+<div class="alert alert-warning">
+  Spotifyから曲を取得できませんでした。時間をおいて再度お試しください。
+</div>
+{% endif %}
+
+{% if bad_track %}
+<div class="alert alert-danger">
+  曲情報が正しくありませんでした。もう一度検索から選び直してください。
+</div>
+{% endif %}
+
+{% if results %}
+<h5 class="text-secondary mb-3">検索結果</h5>
+<div class="list-group mb-4">
+  {% for track in results %}
+  <form method="post" action="/songs">
+    <input type="hidden" name="spotify_track_id" value="{{ track.spotify_track_id }}">
+    <input type="hidden" name="title" value="{{ track.title }}">
+    <input type="hidden" name="artist" value="{{ track.artist }}">
+    <input type="hidden" name="album_art_url" value="{{ track.album_art_url or '' }}">
+    <button type="submit"
+            class="list-group-item list-group-item-action d-flex align-items-center gap-3 text-start">
+      {% if track.album_art_url %}
+        <img src="{{ track.album_art_url }}" class="album-art" alt="ジャケット">
+      {% else %}
+        <div class="manual-icon">🎵</div>
+      {% endif %}
+      <div>
+        <div class="fw-bold">{{ track.title }}</div>
+        <div class="text-secondary small">{{ track.artist }}</div>
+      </div>
+      <span class="ms-auto text-secondary small">登録 →</span>
+    </button>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not_found %}
+<div class="text-center py-5 text-secondary">
+  <div style="font-size:3rem;">🔍</div>
+  <p class="mt-2">「{{ q }}」に一致する曲が見つかりませんでした。</p>
+  <p class="small mb-0">曲名やアーティスト名の表記を変えて、もう一度検索してみてください。</p>
+</div>
+{% endif %}
+{% endblock %}

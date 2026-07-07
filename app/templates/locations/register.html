@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}位置情報登録 | 音楽すれ違いアプリ{% endblock %}
+{% block content %}
+<h2 class="mb-4">位置情報を登録する</h2>
+
+{% if bad_coords %}
+<div class="alert alert-danger">緯度は-90〜90、経度は-180〜180の範囲で入力してください。</div>
+{% endif %}
+
+{% if registered %}
+<div class="alert alert-success">
+  <div class="fw-bold mb-1">✅ 位置情報を登録しました。</div>
+  {% if partners > 0 %}
+  <div>今日、<strong>{{ partners }}人</strong>とすれ違っています。</div>
+  <div class="mt-2">
+    <a href="/playlist" class="btn btn-primary btn-sm">🎧 プレイリストを見る</a>
+    <a href="/calendar" class="btn btn-outline-light btn-sm">⭐ 今日のベストを選ぶ</a>
+  </div>
+  {% elif partners == 0 %}
+  <div class="small">まだ今日のすれ違いはありません。近くにいた人が位置情報を登録すると、すれ違いが成立します。</div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card p-4" style="max-width:500px;">
+  <p class="text-secondary small mb-3">「現在地を取得」を押すか、緯度・経度を直接入力してください。</p>
+
+  <button type="button" id="geo-btn" class="btn btn-outline-light mb-3 w-100" onclick="getLocation()">
+    📍 現在地を取得
+  </button>
+  <div id="geo-status" class="small mb-3" style="display:none;"></div>
+
+  <div class="text-secondary small mb-2">またはスポットを選択:</div>
+  <div class="d-flex gap-2 flex-wrap mb-3" id="spot-buttons">
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setSpot(this, 35.6580, 139.7016)">🗼 渋谷駅</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setSpot(this, 35.6896, 139.7006)">🏙 新宿駅</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setSpot(this, 35.6812, 139.7671)">🚉 東京駅</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setSpot(this, 35.7101, 139.8107)">🗼 スカイツリー</button>
+  </div>
+
+  <form method="post" action="/locations">
+    <div class="mb-3">
+      <label class="form-label">緯度（例: 35.6580）</label>
+      <input type="number" step="any" min="-90" max="90" name="latitude" value="35.6580" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">経度（例: 139.7016）</label>
+      <input type="number" step="any" min="-180" max="180" name="longitude" value="139.7016" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary">登録する</button>
+  </form>
+</div>
+
+<script>
+  function setSpot(btn, lat, lng) {
+    document.querySelector('[name="latitude"]').value = lat;
+    document.querySelector('[name="longitude"]').value = lng;
+    // 選択中のスポットを強調表示
+    document.querySelectorAll('#spot-buttons .btn').forEach(function (b) {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-outline-secondary');
+    });
+    btn.classList.remove('btn-outline-secondary');
+    btn.classList.add('btn-primary');
+    // 現在地取得の状態表示をリセット
+    var status = document.getElementById('geo-status');
+    status.style.display = 'block';
+    status.style.color = 'var(--text-sub)';
+    status.textContent = btn.textContent.trim() + ' を選択しました。そのまま「登録する」を押してください。';
+  }
+
+  function getLocation() {
+    var btn = document.getElementById('geo-btn');
+    var status = document.getElementById('geo-status');
+
+    if (!navigator.geolocation) {
+      status.style.display = 'block';
+      status.style.color = 'var(--text-sub)';
+      status.textContent = 'このブラウザは位置情報に対応していません。緯度・経度を直接入力してください。';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '取得中...';
+    status.style.display = 'none';
+
+    navigator.geolocation.getCurrentPosition(
+      // 成功: フォームに反映
+      function (pos) {
+        document.querySelector('[name="latitude"]').value = pos.coords.latitude.toFixed(6);
+        document.querySelector('[name="longitude"]').value = pos.coords.longitude.toFixed(6);
+        btn.textContent = '✅ 現在地を取得しました';
+        status.style.display = 'block';
+        status.style.color = 'var(--text-sub)';
+        status.textContent = '精度: 約' + Math.round(pos.coords.accuracy) + 'm。そのまま「登録する」を押してください。';
+      },
+      // 失敗: 拒否・タイムアウト等。手入力にフォールバック
+      function (err) {
+        btn.disabled = false;
+        btn.textContent = '📍 現在地を取得';
+        status.style.display = 'block';
+        status.style.color = 'var(--text-sub)';
+        if (err.code === err.PERMISSION_DENIED) {
+          status.textContent = '位置情報の使用が許可されませんでした。緯度・経度を直接入力してください。';
+        } else {
+          status.textContent = '現在地を取得できませんでした。緯度・経度を直接入力してください。';
+        }
+      },
+      { timeout: 10000 }
+    );
+  }
+</script>
+{% endblock %}

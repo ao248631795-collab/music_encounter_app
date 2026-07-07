@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}曲を編集 | 音楽すれ違いアプリ{% endblock %}
+{% block content %}
+<h2 class="mb-4">曲を編集</h2>
+<div class="card p-4" style="max-width:500px;">
+  {% if song.spotify_track_id %}
+  <p class="text-secondary small mb-3">
+    Spotifyの曲情報（曲名・アーティスト名）は変更できません。編集できるのはコメントのみです。
+  </p>
+  {% endif %}
+  <form method="post" action="/songs/{{ song.song_id }}/edit">
+    <div class="mb-3">
+      <label class="form-label">曲名 {% if not song.spotify_track_id %}<span class="text-danger">*</span>{% endif %}</label>
+      <input type="text" name="title" value="{{ song.title }}" class="form-control"
+             {% if song.spotify_track_id %}readonly style="opacity:0.6;"{% else %}required{% endif %}>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">アーティスト名 {% if not song.spotify_track_id %}<span class="text-danger">*</span>{% endif %}</label>
+      <input type="text" name="artist" value="{{ song.artist }}" class="form-control"
+             {% if song.spotify_track_id %}readonly style="opacity:0.6;"{% else %}required{% endif %}>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">コメント（任意・200文字まで）</label>
+      <input type="text" name="comment" value="{{ song.comment or '' }}" class="form-control"
+             maxlength="200">
+    </div>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">保存する</button>
+      <a href="/songs" class="btn btn-outline-secondary">キャンセル</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

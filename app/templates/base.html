@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="spotify">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}音楽すれ違いアプリ{% endblock %}</title>
+  <script>
+    // ページ描画前に保存済みテーマを適用（ちらつき防止のためhead先頭で実行）
+    (function () {
+      var t = localStorage.getItem('theme') || 'spotify';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* ===== テーマ定義（CSS変数） ===== */
+    /* デフォルト: Spotify風（黒×緑） */
+    :root, [data-theme="spotify"] {
+      --bg: #121212;
+      --bg-elev: #181818;
+      --bg-hover: #232323;
+      --bg-input: #2a2a2a;
+      --border: #2a2a2a;
+      --border-strong: #535353;
+      --text: #ffffff;
+      --text-sub: #b3b3b3;
+      --accent: #1DB954;
+      --accent-hover: #1ed760;
+      --accent-contrast: #000000;
+      --nav-bg: #000000;
+      --nav-link: #b3b3b3;
+      --placeholder-bg: #333333;
+      --shadow: rgba(29, 185, 84, 0.25);
+    }
+    /* ライト（白×緑） */
+    [data-theme="light"] {
+      --bg: #f8f9fa;
+      --bg-elev: #ffffff;
+      --bg-hover: #f1f3f5;
+      --bg-input: #ffffff;
+      --border: #dee2e6;
+      --border-strong: #adb5bd;
+      --text: #212529;
+      --text-sub: #6c757d;
+      --accent: #1DB954;
+      --accent-hover: #169c46;
+      --accent-contrast: #ffffff;
+      --nav-bg: #ffffff;
+      --nav-link: #495057;
+      --placeholder-bg: #e9ecef;
+      --shadow: rgba(29, 185, 84, 0.25);
+    }
+    /* パープル（黒×紫。旧デフォルト配色） */
+    [data-theme="purple"] {
+      --bg: #0d0d0d;
+      --bg-elev: #1e1e2e;
+      --bg-hover: #26263a;
+      --bg-input: #16162a;
+      --border: #3b3b5c;
+      --border-strong: #5a5a8a;
+      --text: #f0f0f0;
+      --text-sub: #b0b0c8;
+      --accent: #7c3aed;
+      --accent-hover: #6d28d9;
+      --accent-contrast: #ffffff;
+      --nav-bg: #1a1a2e;
+      --nav-link: #c4b5fd;
+      --placeholder-bg: #3b3b6e;
+      --shadow: rgba(124, 58, 237, 0.25);
+    }
+    /* オーシャン（ネイビー×シアン） */
+    [data-theme="blue"] {
+      --bg: #0b1220;
+      --bg-elev: #101c30;
+      --bg-hover: #16243c;
+      --bg-input: #0e1930;
+      --border: #1e3050;
+      --border-strong: #3b5580;
+      --text: #e8f0fa;
+      --text-sub: #8fa8c8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --accent-contrast: #0b1220;
+      --nav-bg: #081020;
+      --nav-link: #8fa8c8;
+      --placeholder-bg: #1e3050;
+      --shadow: rgba(56, 189, 248, 0.25);
+    }
+
+    /* ===== 共通スタイル（テーマ変数を参照） ===== */
+    body { background-color: var(--bg); color: var(--text);
+           transition: background-color .2s ease, color .2s ease; }
+    .navbar { background-color: var(--nav-bg) !important; border-bottom: 1px solid var(--border); }
+    .navbar-brand { color: var(--accent) !important; font-weight: bold; }
+    .nav-link { color: var(--nav-link) !important; }
+    .nav-link:hover { color: var(--text) !important; }
+    .card { background-color: var(--bg-elev); border: 1px solid var(--border); color: var(--text); }
+    .btn-primary { background-color: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 600; }
+    .btn-primary:hover, .btn-primary:focus { background-color: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-contrast); }
+    .btn-outline-light, .btn-outline-secondary { color: var(--text); border-color: var(--border-strong); }
+    .btn-outline-light:hover, .btn-outline-secondary:hover {
+      background-color: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+    .text-secondary { color: var(--text-sub) !important; }
+    .text-muted { color: var(--text-sub) !important; }
+    .small { color: var(--text-sub); }
+    .list-group-item { background-color: var(--bg-elev) !important; border-color: var(--border) !important; color: var(--text) !important; }
+    .list-group-item-action:hover { background-color: var(--bg-hover) !important; }
+    .form-control { background-color: var(--bg-input) !important; color: var(--text) !important; border-color: var(--border-strong) !important; }
+    .form-control::placeholder { color: var(--text-sub) !important; }
+    .form-control:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 .2rem var(--shadow); }
+    .form-label { color: var(--text); font-weight: 500; }
+    .album-art { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; }
+    .manual-icon { width: 56px; height: 56px; background: var(--placeholder-bg); border-radius: 4px;
+                   display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+    .alert-danger { background: rgba(220, 53, 69, .12); border: 1px solid rgba(220, 53, 69, .45); color: var(--text); }
+    .alert-warning { background: rgba(255, 193, 7, .12); border: 1px solid rgba(255, 193, 7, .45); color: var(--text); }
+    .alert-success { background: rgba(25, 135, 84, .12); border: 1px solid rgba(25, 135, 84, .45); color: var(--text); }
+    .badge.bg-secondary { background-color: var(--placeholder-bg) !important; color: var(--text-sub); }
+    code { color: var(--accent); background: var(--bg-elev); padding: 2px 6px; border-radius: 4px; }
+    /* テーマ切替ドロップダウン */
+    .theme-btn { color: var(--nav-link); border: 1px solid var(--border-strong); }
+    .theme-btn:hover { color: var(--text); border-color: var(--text-sub); }
+    .dropdown-menu { background-color: var(--bg-elev); border: 1px solid var(--border); }
+    .dropdown-item { color: var(--text); }
+    .dropdown-item:hover { background-color: var(--bg-hover); color: var(--text); }
+    .dropdown-item.active { background-color: var(--accent); color: var(--accent-contrast); }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg mb-4">
+  <div class="container">
+    <a class="navbar-brand" href="/">🎵 すれ違い音楽</a>
+    <!-- モバイル用ハンバーガー（lg未満で表示） -->
+    <button class="btn btn-sm theme-btn d-lg-none" type="button"
+            data-bs-toggle="collapse" data-bs-target="#navMenu"
+            aria-controls="navMenu" aria-expanded="false" aria-label="メニューを開く">☰</button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <div class="navbar-nav ms-auto align-items-lg-center gap-lg-2 mt-2 mt-lg-0">
+        {% if request.state.user_nickname %}
+        <a class="nav-link" href="/songs">マイ曲</a>
+        <a class="nav-link" href="/locations">位置情報</a>
+        <a class="nav-link" href="/playlist">プレイリスト</a>
+        <a class="nav-link" href="/calendar">カレンダー</a>
+        {% else %}
+        <a class="nav-link" href="/login">ログイン</a>
+        <a class="nav-link" href="/register">新規登録</a>
+        {% endif %}
+        <div class="dropdown ms-lg-2 mt-2 mt-lg-0">
+          <button class="btn btn-sm theme-btn dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            🎨 テーマ
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#" data-theme-value="spotify" onclick="setTheme('spotify'); return false;">Spotify（黒×緑）</a></li>
+            <li><a class="dropdown-item" href="#" data-theme-value="light" onclick="setTheme('light'); return false;">ライト（白）</a></li>
+            <li><a class="dropdown-item" href="#" data-theme-value="purple" onclick="setTheme('purple'); return false;">パープル</a></li>
+            <li><a class="dropdown-item" href="#" data-theme-value="blue" onclick="setTheme('blue'); return false;">オーシャン</a></li>
+          </ul>
+        </div>
+        {% if request.state.user_nickname %}
+        <form method="post" action="/logout" class="d-inline m-0 ms-lg-2 mt-2 mt-lg-0 mb-2 mb-lg-0">
+          <button type="submit" class="btn btn-sm btn-outline-secondary">ログアウト</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>
+<div class="container">
+  {% block content %}{% endblock %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('theme', t);
+    markActiveTheme();
+  }
+  function markActiveTheme() {
+    var t = document.documentElement.getAttribute('data-theme');
+    document.querySelectorAll('[data-theme-value]').forEach(function (el) {
+      el.classList.toggle('active', el.getAttribute('data-theme-value') === t);
+    });
+  }
+  document.addEventListener('DOMContentLoaded', markActiveTheme);
+</script>
+</body>
+</html>

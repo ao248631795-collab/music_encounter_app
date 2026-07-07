@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}マイ曲 | 音楽すれ違いアプリ{% endblock %}
+{% block content %}
+<style>
+  /* ===== マイ曲（アクティブ曲）の大カード ===== */
+  .my-song-card {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    background: var(--bg-elev);
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 6px 24px var(--shadow);
+  }
+  .my-song-art {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+    flex-shrink: 0;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+  }
+  .my-song-art-placeholder {
+    width: 200px;
+    height: 200px;
+    background: var(--placeholder-bg);
+    border-radius: 10px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+  }
+  .my-song-label { color: var(--accent); font-size: 0.85rem; font-weight: bold; letter-spacing: 0.1em; }
+  .my-song-title { color: var(--text); font-size: 1.6rem; font-weight: bold; margin: 4px 0 2px; }
+  .my-song-artist { color: var(--text-sub); font-size: 1.05rem; }
+  .my-song-comment { color: var(--text-sub); font-style: italic; margin-top: 8px; }
+
+  /* ===== プール（横並びリスト） ===== */
+  .pool-strip {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 4px 2px 12px;
+  }
+  .pool-card {
+    flex: 0 0 160px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .pool-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .pool-card-art { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+  .pool-card-art-placeholder {
+    width: 100%; aspect-ratio: 1 / 1; background: var(--placeholder-bg);
+    display: flex; align-items: center; justify-content: center; font-size: 2.5rem;
+  }
+  .pool-card-body { padding: 10px 12px 6px; }
+  .pool-card-title { color: var(--text); font-weight: bold; font-size: 0.9rem;
+                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pool-card-artist { color: var(--text-sub); font-size: 0.8rem;
+                      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pool-card-actions { padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .pool-card-subactions { display: flex; gap: 6px; }
+  .pool-card-subactions .btn { flex: 1; font-size: 0.75rem; padding: 2px 0; }
+
+  /* ===== モバイル対応 ===== */
+  @media (max-width: 575.98px) {
+    .my-song-card { flex-direction: column; text-align: center; gap: 16px; padding: 20px 16px; }
+    .my-song-art, .my-song-art-placeholder { width: 160px; height: 160px; }
+    .my-song-title { font-size: 1.3rem; }
+  }
+</style>
+
+<h2 class="mb-3">マイ曲</h2>
+<p class="text-secondary small mb-3">すれ違った相手に公開されるのは、この1曲です。</p>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+{% if active_song %}
+<div class="my-song-card mb-5">
+  {% if active_song.album_art_url %}
+    <img src="{{ active_song.album_art_url }}" class="my-song-art" alt="ジャケット">
+  {% else %}
+    <div class="my-song-art-placeholder">🎵</div>
+  {% endif %}
+  <div>
+    <div class="my-song-label">♪ NOW SHARING</div>
+    <div class="my-song-title">{{ active_song.title }}</div>
+    <div class="my-song-artist">{{ active_song.artist }}</div>
+    {% if active_song.comment %}
+    <div class="my-song-comment">{{ active_song.comment }}</div>
+    {% endif %}
+    {% if active_song.is_manual_entry %}
+    <span class="badge bg-secondary mt-2" style="font-size:0.65rem;">手動入力</span>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="alert alert-warning mb-5">
+  マイ曲が設定されていません。下のプールから「マイ曲にする」を選ぶか、曲を追加してください。
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">プール <span class="badge bg-secondary">{{ songs|length }}/5</span></h4>
+  <a href="/songs/search" class="btn btn-primary btn-sm">+ 曲を追加</a>
+</div>
+<p class="text-secondary small mb-3">保存しておける曲は5曲まで。いつでもマイ曲を切り替えられます。</p>
+
+{% if songs %}
+<div class="pool-strip">
+  {% for song in songs %}
+  <div class="pool-card {% if song.is_active %}active{% endif %}">
+    {% if song.album_art_url %}
+      <img src="{{ song.album_art_url }}" class="pool-card-art" alt="ジャケット">
+    {% else %}
+      <div class="pool-card-art-placeholder">🎵</div>
+    {% endif %}
+    <div class="pool-card-body">
+      <div class="pool-card-title">{{ song.title }}</div>
+      <div class="pool-card-artist">{{ song.artist }}</div>
+    </div>
+    <div class="pool-card-actions">
+      {% if song.is_active %}
+      <span class="badge w-100" style="background:var(--accent); color:var(--accent-contrast);">♪ マイ曲に設定中</span>
+      {% else %}
+      <form method="post" action="/songs/{{ song.song_id }}/activate">
+        <button class="btn btn-sm btn-outline-light w-100" style="font-size:0.8rem;">マイ曲にする</button>
+      </form>
+      {% endif %}
+      <div class="pool-card-subactions">
+        <a href="/songs/{{ song.song_id }}/edit" class="btn btn-outline-secondary">編集</a>
+        <form method="post" action="/songs/{{ song.song_id }}/delete" style="flex:1; display:flex;"
+              onsubmit="return confirm('削除しますか？')">
+          <button class="btn btn-outline-danger w-100">削除</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-secondary">
+  <div style="font-size:3rem;">🎵</div>
+  <p class="mt-2">プールに曲がありません。</p>
+  <a href="/songs/search" class="btn btn-primary mt-2">最初の曲を登録する</a>
+</div>
+{% endif %}
+{% endblock %}

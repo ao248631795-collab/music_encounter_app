@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}ログイン | 音楽すれ違いアプリ{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-center">
+  <div class="card p-4" style="max-width:420px; width:100%;">
+    <h2 class="mb-4 text-center">ログイン</h2>
+
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login">
+      <div class="mb-3">
+        <label class="form-label">ニックネーム</label>
+        <input type="text" name="nickname" value="{{ nickname or '' }}" class="form-control" required autofocus>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">パスワード</label>
+        <input type="password" name="password" class="form-control" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">ログイン</button>
+    </form>
+
+    <p class="text-secondary small text-center mt-3 mb-0">
+      アカウントがない方は <a href="/register" style="color: var(--accent);">新規登録</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

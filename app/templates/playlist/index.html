@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}プレイリスト | 音楽すれ違いアプリ{% endblock %}
+{% block content %}
+<style>
+  /* ===== モバイル対応: Embedとメタ情報を縦積みに ===== */
+  @media (max-width: 575.98px) {
+    .pl-item { flex-wrap: wrap; }
+    .pl-meta {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-align: start !important;
+    }
+    .pl-meta .mt-2 { margin-top: 0 !important; }
+  }
+</style>
+
+<h2 class="mb-1">すれ違いプレイリスト</h2>
+<p class="text-secondary small mb-4">近くにいた人たちが聴いていた曲です。今日すれ違った曲は、そのまま「今日のベスト」に選べます。</p>
+
+{% if error %}
+<div class="alert alert-danger">この曲は今日のすれ違い履歴にないため登録できません。</div>
+{% endif %}
+
+{% if tracks %}
+{% set today_key = (today_pick.spotify_track_id or (today_pick.title ~ '|' ~ today_pick.artist)) if today_pick else None %}
+<div class="list-group">
+  {% for track in tracks %}
+  {% set t_key = track.spotify_track_id or (track.title ~ '|' ~ track.artist) %}
+  <div class="list-group-item pl-item d-flex align-items-center gap-3">
+    {% if track.spotify_track_id %}
+    <!-- Spotify公式Embedプレーヤー（認証不要・遅延読み込み） -->
+    <iframe src="https://open.spotify.com/embed/track/{{ track.spotify_track_id }}"
+            width="100%" height="80" frameborder="0" loading="lazy"
+            allow="clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            style="border-radius:10px; border:none; display:block; flex:1 1 auto; min-width:240px;"
+            title="{{ track.title }} / {{ track.artist }}"></iframe>
+    {% else %}
+    {% if track.album_art_url %}
+      <img src="{{ track.album_art_url }}" class="album-art" alt="ジャケット">
+    {% else %}
+      <div class="manual-icon">🎵</div>
+    {% endif %}
+    <div class="flex-grow-1">
+      <div class="fw-bold">{{ track.title }}</div>
+      <div class="text-secondary small">{{ track.artist }}</div>
+    </div>
+    {% endif %}
+    <div class="pl-meta text-secondary small text-end" style="flex-shrink:0;">
+      すれ違い<br>{{ track.encountered_at.strftime('%m/%d %H:%M') }}
+      {% if track.encounter_count >= 2 %}
+      <br><span class="badge" style="background:var(--placeholder-bg); color:var(--text-sub); font-size:0.65rem;">{{ track.encounter_count }}回目のすれ違い</span>
+      {% endif %}
+      {% if not track.spotify_track_id %}
+      <br><span class="badge bg-secondary" style="font-size:0.6rem;">再生不可</span>
+      {% endif %}
+      {% if track.song_id in candidate_song_ids %}
+      <div class="mt-2">
+        {% if today_key and t_key == today_key %}
+        <span class="badge" style="background:var(--accent); color:var(--accent-contrast);">⭐ 今日のベスト</span>
+        {% else %}
+        <form method="post" action="/calendar/pick" class="m-0">
+          <input type="hidden" name="song_id" value="{{ track.song_id }}">
+          <input type="hidden" name="return_to" value="playlist">
+          <button class="btn btn-outline-light btn-sm" style="font-size:0.75rem; white-space:nowrap;">⭐ ベストにする</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% if track.comment %}
+    <div class="w-100 fst-italic text-secondary small mt-1">「{{ track.comment }}」— すれ違った誰かのひとこと</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-secondary">
+  <div style="font-size:3rem;">🎧</div>
+  <p class="mt-2">まだすれ違い記録がありません。</p>
+  <p class="small">位置情報を登録しておくと、近くにいた人の曲がここに届きます。</p>
+  <a href="/locations" class="btn btn-outline-light btn-sm mt-1">位置情報を登録する</a>
+</div>
+{% endif %}
+{% endblock %}

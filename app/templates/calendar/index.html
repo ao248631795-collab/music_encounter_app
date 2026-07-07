@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block title %}カレンダー | 音楽すれ違いアプリ{% endblock %}
+{% block content %}
+<style>
+  /* ===== 今日のベスト 大カード ===== */
+  .today-pick-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--bg-elev);
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 6px 24px var(--shadow);
+  }
+  .today-pick-art {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 10px;
+    flex-shrink: 0;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+  .today-pick-art-placeholder {
+    width: 120px;
+    height: 120px;
+    background: var(--placeholder-bg);
+    border-radius: 10px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+  }
+  .today-pick-label { color: var(--accent); font-size: 0.85rem; font-weight: bold; letter-spacing: 0.08em; }
+  .today-pick-title { color: var(--text); font-size: 1.4rem; font-weight: bold; margin: 4px 0 2px; }
+  .today-pick-artist { color: var(--text-sub); font-size: 1rem; }
+
+  /* ===== 候補ストリップ（横並び） ===== */
+  .pool-strip {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 4px 2px 12px;
+  }
+  .pool-card {
+    flex: 0 0 140px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .pool-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .pool-card-art { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+  .pool-card-art-placeholder {
+    width: 100%; aspect-ratio: 1 / 1; background: var(--placeholder-bg);
+    display: flex; align-items: center; justify-content: center; font-size: 2.5rem;
+  }
+  .pool-card-body { padding: 10px 12px 6px; }
+  .pool-card-title { color: var(--text); font-weight: bold; font-size: 0.9rem;
+                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pool-card-artist { color: var(--text-sub); font-size: 0.8rem;
+                      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pool-card-actions { padding: 8px 12px 12px; }
+  .pool-card-badge { display: block; text-align: center; background: var(--accent);
+                     color: var(--accent-contrast); border-radius: 6px; font-size: 0.75rem;
+                     font-weight: bold; padding: 3px 0; }
+
+  /* ===== カレンダーグリッド ===== */
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .cal-nav { color: var(--text); text-decoration: none; font-size: 1.3rem; padding: 2px 12px;
+             border: 1px solid var(--border-strong); border-radius: 8px; }
+  .cal-nav:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+  .cal-title { color: var(--text); font-size: 1.3rem; font-weight: bold; margin: 0; }
+  .cal-grid { width: 100%; border-collapse: separate; border-spacing: 6px; table-layout: fixed; }
+  .cal-weekday { color: var(--text-sub); font-size: 0.85rem; text-align: center; padding-bottom: 4px; font-weight: 600; }
+  .cal-weekday.sunday { color: rgba(220, 53, 69, 0.85); }
+  .cal-cell {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    vertical-align: top;
+    min-height: 80px;
+    height: 80px;
+    padding: 4px;
+    position: relative;
+  }
+  .cal-cell.empty { background: transparent; border: none; }
+  .cal-cell.today { border: 2px solid var(--accent); }
+  .cal-cell.selected { box-shadow: 0 0 0 3px var(--accent); border-color: var(--accent); }
+  .cal-cell.resonance { border-color: var(--accent); box-shadow: 0 0 12px var(--shadow); }
+  .cal-resonance-mark { position: absolute; top: 2px; right: 5px; font-size: 0.75rem; pointer-events: none; }
+
+  /* ===== 共鳴（レゾナンス）バナー ===== */
+  .resonance-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(90deg, var(--shadow), transparent 70%);
+    background-color: var(--bg-elev);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: var(--text);
+  }
+  .resonance-banner .icon { font-size: 1.6rem; flex-shrink: 0; }
+  .resonance-banner .lead-text { font-weight: bold; }
+  .resonance-banner .sub-text { color: var(--text-sub); font-size: 0.85rem; margin-top: 2px; }
+  .cal-cell-link { display: block; text-decoration: none; color: inherit; height: 100%; }
+  .cal-cell-link:hover { background: var(--bg-hover); border-radius: 6px; }
+  .cal-daynum { color: var(--text-sub); font-size: 0.8rem; display: block; }
+  .cal-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 5px; display: block; margin: 4px auto 0; }
+  .cal-thumb-placeholder {
+    width: 36px; height: 36px; background: var(--placeholder-bg); border-radius: 5px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin: 4px auto 0;
+  }
+
+  /* ===== 選択日の詳細（過去記録パネル。今日のベストと明確に区別する） ===== */
+  .detail-panel {
+    background: var(--bg-hover);
+    border: 1px dashed var(--border-strong);
+    border-radius: 14px;
+    padding: 16px 18px 18px;
+    scroll-margin-top: 16px;
+  }
+  .detail-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .detail-badge {
+    display: inline-block;
+    background: var(--placeholder-bg);
+    color: var(--text-sub);
+    font-size: 0.72rem;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+  .detail-badge.today-badge { background: var(--accent); color: var(--accent-contrast); }
+  .detail-badge.resonance-badge { border: 1px solid var(--accent); color: var(--accent); background: transparent; }
+  .detail-heading { color: var(--text); font-size: 1.2rem; font-weight: bold; margin: 8px 0 0; }
+  .detail-close {
+    flex-shrink: 0;
+    color: var(--text-sub);
+    text-decoration: none;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 4px 12px;
+    white-space: nowrap;
+  }
+  .detail-close:hover { color: var(--text); border-color: var(--text-sub); }
+  .detail-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .detail-art { width: 140px; height: 140px; object-fit: cover; border-radius: 10px; flex-shrink: 0; }
+  .detail-art-placeholder {
+    width: 140px; height: 140px; background: var(--placeholder-bg); border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 3.5rem;
+  }
+  .detail-title { color: var(--text); font-size: 1.3rem; font-weight: bold; margin-bottom: 2px; }
+  .detail-artist { color: var(--text-sub); font-size: 1rem; }
+
+  /* ===== モバイル対応 ===== */
+  @media (max-width: 575.98px) {
+    .today-pick-card { flex-direction: column; text-align: center; gap: 12px; padding: 16px; }
+    .detail-card { flex-direction: column; text-align: center; gap: 12px; }
+    .cal-grid { border-spacing: 3px; }
+    .cal-cell { height: 60px; min-height: 60px; padding: 2px; }
+    .cal-daynum { font-size: 0.7rem; }
+    .cal-thumb, .cal-thumb-placeholder { width: 26px; height: 26px; }
+    .cal-thumb-placeholder { font-size: 0.85rem; }
+    .cal-resonance-mark { font-size: 0.6rem; top: 1px; right: 2px; }
+    .cal-nav { font-size: 1rem; padding: 2px 10px; }
+    .cal-title { font-size: 1.1rem; }
+  }
+</style>
+
+<h2 class="mb-2">カレンダー</h2>
+<p class="text-secondary small mb-4">その日すれ違った中でいちばん良かった曲を、1日1曲だけ残せます。</p>
+
+{% if error %}
+<div class="alert alert-danger">この曲は今日のすれ違い履歴にないため登録できません。</div>
+{% endif %}
+
+<!-- ===== 今日のベスト ===== -->
+<h4 class="mb-3">今日のベスト</h4>
+
+{% if today_resonance %}
+<div class="resonance-banner mb-3">
+  <span class="icon">✨</span>
+  <div>
+    <div class="lead-text">共鳴した日</div>
+    <div class="sub-text">今日すれ違った誰かと、お互いの曲をベストに選び合いました。</div>
+    {% if today_resonance_count >= 2 %}<div class="sub-text">この誰かと音が重なるのは、{{ today_resonance_count }}回目です。</div>{% endif %}
+  </div>
+</div>
+{% elif picked_count > 0 %}
+<div class="resonance-banner mb-3">
+  <span class="icon">🎵</span>
+  <div>
+    <div class="lead-text">あなたの曲が今日、誰かのベストに選ばれました（{{ picked_count }}人）</div>
+    <div class="sub-text">それが誰かは、わかりません。</div>
+  </div>
+</div>
+{% endif %}
+
+{% if today_pick %}
+<div class="today-pick-card mb-4">
+  {% if today_pick.album_art_url %}
+    <img src="{{ today_pick.album_art_url }}" class="today-pick-art" alt="ジャケット">
+  {% else %}
+    <div class="today-pick-art-placeholder">🎵</div>
+  {% endif %}
+  <div>
+    <div class="today-pick-label">⭐ 今日のベスト</div>
+    <div class="today-pick-title">{{ today_pick.title }}</div>
+    <div class="today-pick-artist">{{ today_pick.artist }}</div>
+  </div>
+</div>
+{% endif %}
+
+{% if candidates %}
+{% set today_key = (today_pick.spotify_track_id or (today_pick.title ~ '|' ~ today_pick.artist)) if today_pick else None %}
+<div class="pool-strip mb-5">
+  {% for c in candidates %}
+  {% set c_key = c.spotify_track_id or (c.title ~ '|' ~ c.artist) %}
+  <div class="pool-card {% if today_key and c_key == today_key %}active{% endif %}">
+    {% if c.album_art_url %}
+      <img src="{{ c.album_art_url }}" class="pool-card-art" alt="ジャケット">
+    {% else %}
+      <div class="pool-card-art-placeholder">🎵</div>
+    {% endif %}
+    <div class="pool-card-body">
+      <div class="pool-card-title">{{ c.title }}</div>
+      <div class="pool-card-artist">{{ c.artist }}</div>
+    </div>
+    <div class="pool-card-actions">
+      {% if today_key and c_key == today_key %}
+      <span class="pool-card-badge">⭐ ベスト</span>
+      {% else %}
+      <form method="post" action="/calendar/pick">
+        <input type="hidden" name="song_id" value="{{ c.song_id }}">
+        <button class="btn btn-outline-light btn-sm w-100">この曲にする</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-secondary mb-5">
+  <p class="mb-1">今日はまだ誰ともすれ違っていません。</p>
+  <p class="small mb-2">位置情報を登録しておくと、近くにいた人とのすれ違いが記録されます。</p>
+  <a href="/locations" class="btn btn-outline-light btn-sm">位置情報を登録する</a>
+</div>
+{% endif %}
+
+<!-- ===== カレンダーグリッド ===== -->
+<div class="cal-header">
+  <a class="cal-nav" href="/calendar?year={{ prev_year }}&month={{ prev_month }}">◀</a>
+  <h4 class="cal-title">{{ year }}年{{ month }}月</h4>
+  <a class="cal-nav" href="/calendar?year={{ next_year }}&month={{ next_month }}">▶</a>
+</div>
+
+<div class="text-end mb-3">
+  <a class="btn btn-primary btn-sm" href="/calendar/monthly?year={{ year }}&month={{ month }}">
+    🎧 {{ month }}月のベストをまとめて見る
+  </a>
+</div>
+
+<table class="cal-grid mb-5">
+  <thead>
+    <tr>
+      <th class="cal-weekday sunday">日</th>
+      <th class="cal-weekday">月</th>
+      <th class="cal-weekday">火</th>
+      <th class="cal-weekday">水</th>
+      <th class="cal-weekday">木</th>
+      <th class="cal-weekday">金</th>
+      <th class="cal-weekday">土</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for week in weeks %}
+    <tr>
+      {% for d in week %}
+      {% if d == 0 %}
+      <td class="cal-cell empty"></td>
+      {% else %}
+      {% set is_today = (today.year == year and today.month == month and today.day == d) %}
+      {% set is_selected = (selected_day == d) %}
+      {% set is_resonance = d in resonance_days %}
+      {% set pick = picks.get(d) %}
+      <td class="cal-cell {% if is_today %}today{% endif %} {% if is_selected %}selected{% endif %} {% if is_resonance %}resonance{% endif %}">
+        {% if is_resonance %}<span class="cal-resonance-mark">✨</span>{% endif %}
+        {% if pick %}
+        <a class="cal-cell-link" href="/calendar?year={{ year }}&month={{ month }}&day={{ d }}#day-detail">
+          <span class="cal-daynum">{{ d }}</span>
+          {% if pick.album_art_url %}
+            <img src="{{ pick.album_art_url }}" class="cal-thumb" alt="ジャケット">
+          {% else %}
+            <div class="cal-thumb-placeholder">🎵</div>
+          {% endif %}
+        </a>
+        {% else %}
+        <span class="cal-daynum">{{ d }}</span>
+        {% endif %}
+      </td>
+      {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- ===== 選択日の詳細 ===== -->
+{% if selected_pick %}
+{% set is_selected_today = (selected_day == today.day and month == today.month and year == today.year) %}
+<div id="day-detail" class="detail-panel mb-4">
+  <div class="detail-panel-head">
+    <div>
+      {% if is_selected_today %}
+      <span class="detail-badge today-badge">📅 今日の記録</span>
+      {% else %}
+      <span class="detail-badge">🕘 過去の記録・閲覧のみ</span>
+      {% endif %}
+      {% if selected_day in resonance_days %}
+      <span class="detail-badge resonance-badge">✨ 共鳴した日</span>
+      {% endif %}
+      <h4 class="detail-heading">{{ year }}年{{ month }}月{{ selected_day }}日のベスト</h4>
+    </div>
+    <a class="detail-close" href="/calendar?year={{ year }}&month={{ month }}">✕ 閉じる</a>
+  </div>
+  <div class="detail-card">
+    {% if selected_pick.album_art_url %}
+      <img src="{{ selected_pick.album_art_url }}" class="detail-art" alt="ジャケット">
+    {% else %}
+      <div class="detail-art-placeholder">🎵</div>
+    {% endif %}
+    <div>
+      <div class="detail-title">{{ selected_pick.title }}</div>
+      <div class="detail-artist">{{ selected_pick.artist }}</div>
+      {% if selected_pick.is_manual_entry %}
+      <span class="badge bg-secondary mt-2">手動入力</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
